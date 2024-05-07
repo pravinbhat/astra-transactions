@@ -9,12 +9,15 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
 import com.datastax.oss.driver.api.core.cql.BatchStatement;
 import com.datastax.oss.driver.api.core.cql.BatchType;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
@@ -23,7 +26,6 @@ import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 public class TransactionApp {
 
 	private static Logger LOGGER = LoggerFactory.getLogger(TransactionApp.class);
-	private static int SLEEP_TIME = 20;
 
 	private static PreparedStatement insertCourseRecord;
 	private static PreparedStatement insertStudentRecord;
@@ -45,9 +47,9 @@ public class TransactionApp {
 		insertCourseRecord = session.prepare(
 				insertInto(AppUtil.BATCH_COURSE).value("course_id", bindMarker()).value("student_id", bindMarker())
 						.value("value", bindMarker()).value("join_date", bindMarker()).build());
-		insertStudentRecord = session.prepare(insertInto(AppUtil.BATCH_STUDENT).value("student_id", bindMarker())
-				.value("course_id", bindMarker()).value("value", bindMarker()).value("join_date", bindMarker())
-				.build());
+		insertStudentRecord = session.prepare(
+				insertInto(AppUtil.BATCH_STUDENT).value("student_id", bindMarker()).value("course_id", bindMarker())
+						.value("value", bindMarker()).value("join_date", bindMarker()).build());
 
 		deleteCourseRecord = session.prepare(deleteFrom(AppUtil.BATCH_COURSE).whereColumn("course_id")
 				.isEqualTo(bindMarker()).whereColumn("student_id").isEqualTo(bindMarker()).build());
@@ -77,18 +79,20 @@ public class TransactionApp {
 			}
 		}
 
-		TransactionApp batchApp = new TransactionApp(args[0], args[1], args[2], numOfCourses, numOfStudents, failStudentId, true);
+		TransactionApp batchApp = new TransactionApp(args[0], args[1], args[2], numOfCourses, numOfStudents,
+				failStudentId, true);
 		batchApp.performInsertByMode();
 		AppUtil.closeSession(batchApp.session);
 
-		TransactionApp txApp = new TransactionApp(args[0], args[1], args[2], numOfCourses, numOfStudents, failStudentId, false);
+		TransactionApp txApp = new TransactionApp(args[0], args[1], args[2], numOfCourses, numOfStudents, failStudentId,
+				false);
 		txApp.performInsertByMode();
 		AppUtil.closeSession(txApp.session);
 	}
 
 	private void performInsertByMode() throws Exception {
-		LOGGER.info("======================= PERFORMING Transactional INSERTS with Batch: {} =======================",
-				isBatch);
+		LOGGER.info("======== PERFORMING Transactional INSERTS for {} courses and {} students with Batch: {} ========",
+				numOfCourses, numOfStudents, isBatch);
 		long testStartTime = Calendar.getInstance().getTimeInMillis();
 
 		List<TxStatement> allStmts = createStatements();
@@ -104,8 +108,8 @@ public class TransactionApp {
 
 	private List<TxStatement> createStatements() {
 		List<TxStatement> allStmts = new ArrayList<>();
-		IntStream.range(1, numOfCourses+1).forEach(cidx -> {
-			IntStream.range(1, numOfStudents+1).forEach(sidx -> {
+		IntStream.range(1, numOfCourses + 1).forEach(cidx -> {
+			IntStream.range(1, numOfStudents + 1).forEach(sidx -> {
 				BoundStatement cStmt = insertCourseRecord.bind(cidx, sidx, "Course: " + cidx + ", Student: " + sidx,
 						Instant.now());
 				BoundStatement sStmt = insertStudentRecord.bind(sidx, cidx, "Student: " + sidx + ", Course: " + cidx,
@@ -127,26 +131,14 @@ public class TransactionApp {
 
 	private void executeStatementsAsync(List<TxStatement> statements) throws Exception {
 		int idx = 0;
+		Random rand = new Random();
+		List<CompletionStage<AsyncResultSet>> csList = new ArrayList<>();
 		for (TxStatement statement : statements) {
-			statement.setCs(session.executeAsync(statement.getStatement()));
+			csList.add(session.executeAsync(statement.getStatement()));
 			idx++;
-			
-			// Ensure DB is not overwhelmed running large amount of in-flight Async queries 
-			if (isBatch && idx % 500 == 0) {
-				LOGGER.info("Sleeping {} millis...", SLEEP_TIME);
-				Thread.sleep(SLEEP_TIME);
-			}
-			if (!isBatch && idx % 1000 == 0) {
-				LOGGER.info("Sleeping {} millis...", SLEEP_TIME);
-				Thread.sleep(SLEEP_TIME);
-			}
-		}
 
-        Random rand = new Random();
-		for (TxStatement statement : statements) {
 			try {
-				statement.getCs().toCompletableFuture().get().one();
-				if (statement.getsId() == failStudentId && rand.nextBoolean()) {
+				if (statement.getsId() == failStudentId && rand.nextBoolean() && !isBatch) {
 					throw new Exception("Exception while performing task for student id " + failStudentId);
 				}
 			} catch (Exception ex) {
@@ -156,8 +148,23 @@ public class TransactionApp {
 				LOGGER.error("Deletes complete");
 				// Ideally, capture failed objects in a dead-letter queue & retry as needed
 			}
+
+			// Ensure DB is not overwhelmed running large amount of in-flight Async queries
+			if (isBatch && idx % 500 == 0) {
+				verifyAsyncStatements(csList);
+			}
+			if (!isBatch && idx % 1000 == 0) {
+				verifyAsyncStatements(csList);
+			}
 		}
 
+	}
+
+	private void verifyAsyncStatements(List<CompletionStage<AsyncResultSet>> csList)
+			throws InterruptedException, ExecutionException {
+		for (CompletionStage<AsyncResultSet> cs : csList) {
+			cs.toCompletableFuture().get().one();
+		}
 	}
 
 }
