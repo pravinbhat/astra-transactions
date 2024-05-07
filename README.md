@@ -35,16 +35,16 @@ Executing this sample app performs below sets of operations to demo performance 
 
 ## Sample Output
 ```
-12:06:25.956 INFO  com.bhatman.astra.AppUtil: Table 'BATCH_COURSE' has been created (if not exists) OR truncated (if exists).
-12:06:26.552 INFO  com.bhatman.astra.AppUtil: Table 'BATCH_STUDENT' has been created (if not exists) OR truncated (if exists).
-12:06:26.961 INFO  com.bhatman.astra.TransactionApp: ======== PERFORMING Transactional INSERTS for 100 courses and 100 students with Batch: true ========
-12:06:27.023 INFO  com.bhatman.astra.TransactionApp: Took 61 milliseconds to create 10000 statements
-12:06:29.216 INFO  com.bhatman.astra.TransactionApp: Took 2193 milliseconds to execute 10000 statements with Batch: true
-12:06:31.294 INFO  com.bhatman.astra.AppUtil: Closed connection!
-12:06:33.535 INFO  com.bhatman.astra.AppUtil: Table 'BATCH_COURSE' has been created (if not exists) OR truncated (if exists).
-12:06:34.253 INFO  com.bhatman.astra.AppUtil: Table 'BATCH_STUDENT' has been created (if not exists) OR truncated (if exists).
-12:06:34.611 INFO  com.bhatman.astra.TransactionApp: ======== PERFORMING Transactional INSERTS for 100 courses and 100 students with Batch: false ========
-12:06:34.639 INFO  com.bhatman.astra.TransactionApp: Took 28 milliseconds to create 20000 statements
-12:06:36.074 INFO  com.bhatman.astra.TransactionApp: Took 1435 milliseconds to execute 20000 statements with Batch: false
-12:06:38.145 INFO  com.bhatman.astra.AppUtil: Closed connection!
+12:20:36.968 INFO  com.bhatman.astra.AppUtil: Table 'BATCH_COURSE' has been created (if not exists) OR truncated (if exists).
+12:20:45.474 INFO  com.bhatman.astra.AppUtil: Table 'BATCH_STUDENT' has been created (if not exists) OR truncated (if exists).
+12:20:45.837 INFO  com.bhatman.astra.TransactionApp: ======== PERFORMING transactional INSERTS for 100 Courses and 1000 Students with Batch: true ========
+12:20:46.108 INFO  com.bhatman.astra.TransactionApp: Took 271 milliseconds to create 100000 statements
+12:21:07.852 INFO  com.bhatman.astra.TransactionApp: Took 21743 milliseconds to execute 100000 statements with Batch: true
+12:21:09.936 INFO  com.bhatman.astra.AppUtil: Closed connection!
+12:21:12.419 INFO  com.bhatman.astra.AppUtil: Table 'BATCH_COURSE' has been created (if not exists) OR truncated (if exists).
+12:21:13.356 INFO  com.bhatman.astra.AppUtil: Table 'BATCH_STUDENT' has been created (if not exists) OR truncated (if exists).
+12:21:13.620 INFO  com.bhatman.astra.TransactionApp: ======== PERFORMING transactional INSERTS for 100 Courses and 1000 Students with Batch: false ========
+12:21:13.762 INFO  com.bhatman.astra.TransactionApp: Took 142 milliseconds to create 200000 statements
+12:21:30.523 INFO  com.bhatman.astra.TransactionApp: Took 16760 milliseconds to execute 200000 statements with Batch: false
+12:21:32.590 INFO  com.bhatman.astra.AppUtil: Closed connection!
 ```

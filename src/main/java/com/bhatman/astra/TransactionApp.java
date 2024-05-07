@@ -91,7 +91,7 @@ public class TransactionApp {
 	}
 
 	private void performInsertByMode() throws Exception {
-		LOGGER.info("======== PERFORMING Transactional INSERTS for {} courses and {} students with Batch: {} ========",
+		LOGGER.info("======== PERFORMING transactional INSERTS for {} Courses and {} Students with Batch: {} ========",
 				numOfCourses, numOfStudents, isBatch);
 		long testStartTime = Calendar.getInstance().getTimeInMillis();
 
@@ -139,7 +139,8 @@ public class TransactionApp {
 
 			try {
 				if (statement.getsId() == failStudentId && rand.nextBoolean() && !isBatch) {
-					throw new Exception("Exception while performing task for student id " + failStudentId);
+					throw new Exception("Exception while performing task for student-id: " + failStudentId
+							+ " course-id: " + statement.getcId());
 				}
 			} catch (Exception ex) {
 				LOGGER.error("{}. Initiating deletes...", ex.getLocalizedMessage());
@@ -165,6 +166,7 @@ public class TransactionApp {
 		for (CompletionStage<AsyncResultSet> cs : csList) {
 			cs.toCompletableFuture().get().one();
 		}
+		csList.clear();
 	}
 
 }

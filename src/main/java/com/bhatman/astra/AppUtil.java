@@ -32,15 +32,15 @@ public class AppUtil {
 	}
 
 	public static void createBatchTablesIfNotExists(CqlSession session) {
-		session.execute(SchemaBuilder.createTable(BATCH_COURSE).ifNotExists().withPartitionKey("course_id", DataTypes.INT)
-				.withClusteringColumn("student_id", DataTypes.INT).withColumn("value", DataTypes.TEXT)
-				.withColumn("join_date", DataTypes.TIMESTAMP).build());
+		session.execute(SchemaBuilder.createTable(BATCH_COURSE).ifNotExists()
+				.withPartitionKey("course_id", DataTypes.INT).withClusteringColumn("student_id", DataTypes.INT)
+				.withColumn("value", DataTypes.TEXT).withColumn("join_date", DataTypes.TIMESTAMP).build());
 		session.execute(QueryBuilder.truncate(BATCH_COURSE).build());
 		LOGGER.info("Table '{}' has been created (if not exists) OR truncated (if exists).", BATCH_COURSE);
 
-		session.execute(SchemaBuilder.createTable(BATCH_STUDENT).ifNotExists().withPartitionKey("student_id", DataTypes.INT)
-				.withClusteringColumn("course_id", DataTypes.INT).withColumn("value", DataTypes.TEXT)
-				.withColumn("join_date", DataTypes.TIMESTAMP).build());
+		session.execute(SchemaBuilder.createTable(BATCH_STUDENT).ifNotExists()
+				.withPartitionKey("student_id", DataTypes.INT).withClusteringColumn("course_id", DataTypes.INT)
+				.withColumn("value", DataTypes.TEXT).withColumn("join_date", DataTypes.TIMESTAMP).build());
 		session.execute(QueryBuilder.truncate(BATCH_STUDENT).build());
 		LOGGER.info("Table '{}' has been created (if not exists) OR truncated (if exists).", BATCH_STUDENT);
 	}
