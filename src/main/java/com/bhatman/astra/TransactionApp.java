@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
@@ -76,13 +77,13 @@ public class TransactionApp {
 			}
 		}
 
-		TransactionApp txApp = new TransactionApp(args[0], args[1], args[2], numOfCourses, numOfStudents, failStudentId, false);
-		txApp.performInsertByMode();
-		AppUtil.closeSession(txApp.session);
-
 		TransactionApp batchApp = new TransactionApp(args[0], args[1], args[2], numOfCourses, numOfStudents, failStudentId, true);
 		batchApp.performInsertByMode();
 		AppUtil.closeSession(batchApp.session);
+
+		TransactionApp txApp = new TransactionApp(args[0], args[1], args[2], numOfCourses, numOfStudents, failStudentId, false);
+		txApp.performInsertByMode();
+		AppUtil.closeSession(txApp.session);
 	}
 
 	private void performInsertByMode() throws Exception {
@@ -141,10 +142,11 @@ public class TransactionApp {
 			}
 		}
 
+        Random rand = new Random();
 		for (TxStatement statement : statements) {
 			try {
 				statement.getCs().toCompletableFuture().get().one();
-				if (statement.getsId() == failStudentId) {
+				if (statement.getsId() == failStudentId && rand.nextBoolean()) {
 					throw new Exception("Exception while performing task for student id " + failStudentId);
 				}
 			} catch (Exception ex) {
