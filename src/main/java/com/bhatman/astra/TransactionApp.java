@@ -22,6 +22,7 @@ import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 public class TransactionApp {
 
 	private static Logger LOGGER = LoggerFactory.getLogger(TransactionApp.class);
+	private static int SLEEP_TIME = 20;
 
 	private static PreparedStatement insertCourseRecord;
 	private static PreparedStatement insertStudentRecord;
@@ -128,13 +129,15 @@ public class TransactionApp {
 		for (TxStatement statement : statements) {
 			statement.setCs(session.executeAsync(statement.getStatement()));
 			idx++;
+			
+			// Ensure DB is not overwhelmed running large amount of in-flight Async queries 
 			if (isBatch && idx % 500 == 0) {
-				LOGGER.info("Sleeping {} millis...", 100);
-				Thread.sleep(100);
+				LOGGER.info("Sleeping {} millis...", SLEEP_TIME);
+				Thread.sleep(SLEEP_TIME);
 			}
 			if (!isBatch && idx % 1000 == 0) {
-				LOGGER.info("Sleeping {} millis...", 100);
-				Thread.sleep(100);
+				LOGGER.info("Sleeping {} millis...", SLEEP_TIME);
+				Thread.sleep(SLEEP_TIME);
 			}
 		}
 
