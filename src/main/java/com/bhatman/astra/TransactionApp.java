@@ -8,19 +8,16 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
 import com.datastax.oss.driver.api.core.cql.BatchStatement;
 import com.datastax.oss.driver.api.core.cql.BatchType;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
-import com.datastax.oss.driver.api.core.cql.Statement;
 
 public class TransactionApp {
 
@@ -92,7 +89,7 @@ public class TransactionApp {
 				isBatch);
 		long testStartTime = Calendar.getInstance().getTimeInMillis();
 
-		List<TransactionStatement> allStmts = createStatements();
+		List<TxStatement> allStmts = createStatements();
 		long testEndTime = Calendar.getInstance().getTimeInMillis();
 		LOGGER.info("Took {} milliseconds to create {} statements", testEndTime - testStartTime, allStmts.size());
 
@@ -103,8 +100,8 @@ public class TransactionApp {
 				allStmts.size(), isBatch);
 	}
 
-	private List<TransactionStatement> createStatements() {
-		List<TransactionStatement> allBatchStmts = new ArrayList<>();
+	private List<TxStatement> createStatements() {
+		List<TxStatement> allStmts = new ArrayList<>();
 		IntStream.range(1, numOfCourses+1).forEach(cidx -> {
 			IntStream.range(1, numOfStudents+1).forEach(sidx -> {
 				BoundStatement cStmt = insertCourseRecord.bind(cidx, sidx, "Course: " + cidx + ", Student: " + sidx,
@@ -112,23 +109,23 @@ public class TransactionApp {
 				BoundStatement sStmt = insertStudentRecord.bind(sidx, cidx, "Student: " + sidx + ", Course: " + cidx,
 						Instant.now());
 				if (isBatch) {
-					TransactionStatement ts = new TransactionStatement(
+					TxStatement ts = new TxStatement(
 							BatchStatement.builder(BatchType.LOGGED).addStatement(cStmt).addStatement(sStmt).build(),
 							cidx, sidx);
-					allBatchStmts.add(ts);
+					allStmts.add(ts);
 				} else {
-					allBatchStmts.add(new TransactionStatement(cStmt, cidx, sidx));
-					allBatchStmts.add(new TransactionStatement(sStmt, cidx, sidx));
+					allStmts.add(new TxStatement(cStmt, cidx, sidx));
+					allStmts.add(new TxStatement(sStmt, cidx, sidx));
 				}
 			});
 		});
 
-		return allBatchStmts;
+		return allStmts;
 	}
 
-	private void executeStatementsAsync(List<TransactionStatement> statements) throws Exception {
+	private void executeStatementsAsync(List<TxStatement> statements) throws Exception {
 		int idx = 0;
-		for (TransactionStatement statement : statements) {
+		for (TxStatement statement : statements) {
 			statement.setCs(session.executeAsync(statement.getStatement()));
 			idx++;
 			if (isBatch && idx % 500 == 0) {
@@ -141,7 +138,7 @@ public class TransactionApp {
 			}
 		}
 
-		for (TransactionStatement statement : statements) {
+		for (TxStatement statement : statements) {
 			try {
 				statement.getCs().toCompletableFuture().get().one();
 				if (statement.getsId() == failStudentId) {
@@ -152,57 +149,10 @@ public class TransactionApp {
 				session.execute(deleteCourseRecord.bind(statement.getcId(), statement.getsId()));
 				session.execute(deleteStudentRecord.bind(statement.getcId(), statement.getsId()));
 				LOGGER.error("Deletes complete");
-				// If needed, insert the failed objects in a dead-letter queue & retry the same after a few secs
+				// Ideally, capture failed objects in a dead-letter queue & retry as needed
 			}
 		}
 
-	}
-
-}
-
-class TransactionStatement {
-	private Statement statement;
-	private CompletionStage<AsyncResultSet> cs;
-	private int cId;
-	private int sId;
-
-	public TransactionStatement(Statement statement, int cId, int sId) {
-		super();
-		this.statement = statement;
-		this.cId = cId;
-		this.sId = sId;
-	}
-
-	public Statement getStatement() {
-		return statement;
-	}
-
-	public void setStatement(Statement statement) {
-		this.statement = statement;
-	}
-
-	public CompletionStage<AsyncResultSet> getCs() {
-		return cs;
-	}
-
-	public void setCs(CompletionStage<AsyncResultSet> cs) {
-		this.cs = cs;
-	}
-
-	public int getcId() {
-		return cId;
-	}
-
-	public void setcId(int cId) {
-		this.cId = cId;
-	}
-
-	public int getsId() {
-		return sId;
-	}
-
-	public void setsId(int sId) {
-		this.sId = sId;
 	}
 
 }
