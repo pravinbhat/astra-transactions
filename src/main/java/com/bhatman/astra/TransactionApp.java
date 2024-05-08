@@ -70,7 +70,7 @@ public class TransactionApp {
 		}
 		int numOfCourses = 10; // Default
 		int numOfStudents = 20; // Default
-		int failStudentId = 15; // Default
+		int failStudentId = 0; // Default
 		if (args.length > 3) {
 			numOfCourses = Integer.parseInt(args[3]);
 			numOfStudents = Integer.parseInt(args[4]);
@@ -158,7 +158,8 @@ public class TransactionApp {
 				verifyAsyncStatements(csList);
 			}
 		}
-
+		
+		verifyAsyncStatements(csList);
 	}
 
 	private void verifyAsyncStatements(List<CompletionStage<AsyncResultSet>> csList)
